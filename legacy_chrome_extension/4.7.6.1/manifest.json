@@ -1,0 +1,88 @@
+{
+  "manifest_version": 3,
+  "name": "1Password Beta",
+  "version": "4.7.6.1",
+  "description": "Extends the 1Password app on your Mac or Windows PC, so you can fill and save passwords in your browser.",
+  "icons": {
+    "16": "assets/Icon-16.png",
+    "48": "assets/Icon-48.png",
+    "128": "assets/Icon-128.png"
+  },
+  "action": {
+    "default_title": "1Password",
+    "default_icon": {
+      "19": "assets/toolbar.png",
+      "38": "assets/toolbar@2x.png"
+    }
+  },
+  "author": "AgileBits",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "all_frames": true,
+      "css": ["fillStyle.css"],
+      "js": ["injected.min.js"],
+      "run_at": "document_start",
+      "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": [
+        "*://*.ad.com/*", "*://*.ad.org/*", "*://*.ad.net/*",
+        "*://*.ad0.com/*", "*://*.ad0.net/*", "*://*.ad0.org/*",
+        "*://*.ad1.com/*", "*://*.ad1.net/*", "*://*.ad1.org/*",
+        "*://*.ad2.com/*", "*://*.ad2.net/*", "*://*.ad2.org/*",
+        "*://*.ad3.com/*", "*://*.ad3.net/*", "*://*.ad3.org/*",
+        "*://*.ad4.com/*", "*://*.ad4.net/*", "*://*.ad4.org/*",
+        "*://*.ad5.com/*", "*://*.ad5.net/*", "*://*.ad5.org/*",
+        "*://*.ad6.com/*", "*://*.ad6.net/*", "*://*.ad6.org/*",
+        "*://*.ad7.com/*", "*://*.ad7.net/*", "*://*.ad7.org/*",
+        "*://*.ad8.com/*", "*://*.ad8.net/*", "*://*.ad8.org/*",
+        "*://*.ad9.com/*", "*://*.ad9.net/*", "*://*.ad9.org/*",
+        "*://*.ads.com/*", "*://*.ads.net/*", "*://*.ads.org/*",
+        "*://*.adserver.com/*", "*://*.adserver.net/*", "*://*.adserver.org/*",
+        "*://*.atdmt.com/*", "*://*.doubleclick.net/*", "*://*.ak.fbcdn.net/*",
+        "*://plusone.google.com/*", "*://platform.twitter.com/widgets/*",
+        "*://*.facebook.com/widgets/*", "*://*.facebook.com/plugins/*",
+        "*://*.facebook.com/extern/*", "*://www.youtube.com/embed/*",
+        "*://stats.complex.com/*", "*://*.addthis.com/static/*",
+        "*://vitamine.networldmedia.net/*", "*://api.tweetmeme.com/*",
+        "*://*.atwola.com/*", "*://engine.adzerk.net/*",
+        "*://*.stumbleupon.com/badge/*", "*://*.bizographics.com/collect/*",
+        "*://*.musthird.com/*"
+      ]
+    }
+  ],
+  "homepage_url": "https://agilebits.com/onepassword",
+  "incognito": "spanning",
+  "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCWQJbxQ31ikdrZbmRSBK8mpMh2s1pOnCjVTNDOE0KCHYZRnLu994edDgGXs36ga0G/jjV5YScNmeX24ds/kZ0b0UP4V+YXv7Lu9IevRTRR/LinUy3s3m3nIuY5rtzD5FQau3dAo9qHgggNI5MrEjNh5cjsSTq021r/yOzmNsoTNQIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "scripting"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.min.js", "fillStyle.css"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "short_name": "1Password",
+  "update_url": "https://cdn.agilebits.com/dist/1P/ext/autoupdate_chrome_beta4.xml"
+}

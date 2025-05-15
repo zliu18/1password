@@ -1,12 +1,15 @@
 {
    "author": "AgileBits",
    "background": {
-      "scripts": [ "ext/sjcl.js", "global.min.js" ]
+      "service_worker": "minimal-service-worker.js"
    },
-   "browser_action": {
+   "action": {
       "default_icon": {
+         "16": "assets/Icon-16.png",
          "19": "assets/toolbar.png",
-         "38": "assets/toolbar@2x.png"
+         "38": "assets/toolbar@2x.png",
+         "48": "assets/Icon-48.png",
+         "128": "assets/Icon-128.png"
       },
       "default_title": "1Password"
    },
@@ -28,9 +31,23 @@
    },
    "incognito": "spanning",
    "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCB4Mf0xWDqstptZh7gqocHL+RT36ZJo/iJ0kZmLyC8vxCsGS26Loidt69KPBVlfuBI0FaWL25NVB2sVdj7wNsCvQIn7ImQwSB5Audq2B3uQzk70RA7SmGE9ndIKsKs4L19n8avhg4ohejyBiI5nrUegs94i0tMpFVeedmTOO4+eQIDAQAB",
-   "manifest_version": 2,
+   "manifest_version": 3,
    "name": "__MSG_appName__",
-   "permissions": [ "contextMenus", "nativeMessaging", "storage", "tabs", "webRequest", "webRequestBlocking", "http://*/*", "https://*/*" ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+   },
+   "permissions": [
+      "contextMenus",
+      "nativeMessaging",
+      "storage",
+      "tabs",
+      "webRequest",
+      "declarativeNetRequest"
+   ],
+   "host_permissions": [
+      "http://*/*",
+      "https://*/*"
+   ],
    "short_name": "1Password",
    "update_url": "https://clients2.google.com/service/update2/crx",
    "version": "4.7.5.90"

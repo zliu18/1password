@@ -1,291 +1,143 @@
-// Service worker setup
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
+// Manifest V3 compatibility entry point for the classic extension.
+// Keep listener registration synchronous: Chrome may recreate this worker at any time.
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
-// Create window and document polyfills for the service worker environment
-// This allows the background scripts that expect a window object to run
-if (typeof window === 'undefined') {
-  self.window = self;
-
-  // Create basic document polyfill
-  self.document = {
-    createElement: function() {
-      return {
-        style: {},
-        setAttribute: function() {},
-        getElementsByTagName: function() { return []; },
-        querySelectorAll: function() { return []; }
-      };
-    },
-    addEventListener: function() {},
-    elementForOPID: function() { return null; },
-    querySelectorAll: function() { return []; }
-  };
-
-  // Add navigator polyfill
-  if (typeof navigator === 'undefined') {
-    self.navigator = {
-      userAgent: self.navigator ? self.navigator.userAgent : 'Chrome',
-      platform: 'Unknown'
+// The legacy bundle was compiled for a background page. It only needs a small
+// subset of window/document while running in the extension background context.
+self.window = self;
+self.document = {
+  createElement() {
+    return {
+      style: {},
+      setAttribute() {},
+      getElementsByTagName() { return []; },
+      querySelectorAll() { return []; }
     };
-  }
+  },
+  addEventListener() {},
+  elementForOPID() { return null; },
+  querySelectorAll() { return []; }
+};
 
-  // Add API polyfills for Manifest V3 compatibility
-  if (typeof chrome !== 'undefined') {
-    // Create a contextMenus polyfill to handle Manifest V3 requirements
-    if (chrome.contextMenus) {
-      // Store the original create method
-      const originalCreate = chrome.contextMenus.create;
-
-      // Store click handlers by menu item ID
-      const clickHandlers = {};
-
-      // Set up the onClicked listener if it doesn't exist
-      if (!chrome.contextMenus._hasSetupOnClickedListener) {
-        chrome.contextMenus.onClicked.addListener((info, tab) => {
-          const handler = clickHandlers[info.menuItemId];
-          if (handler && typeof handler === 'function') {
-            handler(info, tab);
-          }
-        });
-        chrome.contextMenus._hasSetupOnClickedListener = true;
-      }
-
-      // Replace with one that handles both ID and onclick requirements
-      chrome.contextMenus.create = function(createProperties, callback) {
-        // Add an ID if one isn't provided
-        if (!createProperties.id) {
-          createProperties.id = 'onepassword_' + Date.now();
-        }
-
-        // If there's an onclick handler, store it and remove from properties
-        if (createProperties.onclick && typeof createProperties.onclick === 'function') {
-          // Store the handler with the ID
-          clickHandlers[createProperties.id] = createProperties.onclick;
-
-          // Remove the onclick property to avoid the error
-          const onclickHandler = createProperties.onclick;
-          delete createProperties.onclick;
-        }
-
-        // Call the original method with the modified properties
-        return originalCreate.call(chrome.contextMenus, createProperties, callback);
-      };
-    }
-
-    // Create a browserAction polyfill that redirects to action in MV3
-    if (!chrome.browserAction) {
-      chrome.browserAction = {
-        // Map browserAction.onClicked to action.onClicked
-        onClicked: chrome.action ? chrome.action.onClicked : {
-          addListener: function(callback) {
-            // Use action API instead
-            if (chrome.action && chrome.action.onClicked) {
-              chrome.action.onClicked.addListener(callback);
-            }
-          }
-        },
-
-        // Add enable/disable methods that map to the new action API
-        enable: function(tabId) {
-          if (chrome.action && chrome.action.enable) {
-            if (tabId !== undefined) {
-              chrome.action.enable(tabId);
-            } else {
-              chrome.action.enable();
-            }
-          }
-        },
-
-        disable: function(tabId) {
-          if (chrome.action && chrome.action.disable) {
-            if (tabId !== undefined) {
-              chrome.action.disable(tabId);
-            } else {
-              chrome.action.disable();
-            }
-          }
-        },
-
-        // Add other commonly used browserAction methods
-        setIcon: function(details) {
-          if (chrome.action && chrome.action.setIcon) {
-            chrome.action.setIcon(details);
-          }
-        },
-
-        setTitle: function(details) {
-          if (chrome.action && chrome.action.setTitle) {
-            chrome.action.setTitle(details);
-          }
-        },
-
-        setBadgeText: function(details) {
-          if (chrome.action && chrome.action.setBadgeText) {
-            chrome.action.setBadgeText(details);
-          }
-        },
-
-        setBadgeBackgroundColor: function(details) {
-          if (chrome.action && chrome.action.setBadgeBackgroundColor) {
-            chrome.action.setBadgeBackgroundColor(details);
-          }
-        }
-      };
-    }
-
-    // Create a webRequest polyfill using declarativeNetRequest
-    if (!chrome.webRequest) {
-      chrome.webRequest = {
-        onBeforeRequest: {
-          addListener: function(callback, filter, opt) {
-            console.log('webRequest.onBeforeRequest is not supported in Manifest V3');
-            console.log('Using declarativeNetRequest instead for URL filters:', filter.urls);
-
-            // Register rules to handle onepasswdfill parameter
-            if (filter.urls.includes('*://*/*onepasswdfill=*')) {
-              // Set up redirect detection via declarativeNetRequest
-              chrome.declarativeNetRequest.updateDynamicRules({
-                removeRuleIds: [1], // Remove existing rule if any
-                addRules: [{
-                  id: 1,
-                  priority: 1,
-                  action: {
-                    type: "redirect",
-                    redirect: { transform: { queryTransform: { addOrReplaceParams: [] } } }
-                  },
-                  condition: {
-                    urlFilter: "onepasswdfill=",
-                    resourceTypes: ["main_frame"]
-                  }
-                }]
-              });
-
-              // Listen for tab updates to handle the parameter
-              chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-                if (changeInfo.url && changeInfo.url.includes('onepasswdfill=')) {
-                  const url = new URL(changeInfo.url);
-                  const redirectResult = { redirectUrl: url.toString() };
-                  // Try to call the original callback with simulated parameters
-                  try {
-                    callback({
-                      tabId: tabId,
-                      url: changeInfo.url,
-                      type: 'main_frame'
-                    });
-                  } catch (e) {
-                    console.error("Error calling webRequest callback:", e);
-                  }
-                }
-              });
-            }
-          }
-        },
-        onCompleted: {
-          addListener: function(callback, filter) {
-            console.log('webRequest.onCompleted is not supported in Manifest V3');
-            // We can't fully replicate this in MV3, but can do basic tab monitoring
-            chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-              if (changeInfo.status === 'complete') {
-                try {
-                  callback({
-                    tabId: tabId,
-                    url: tab.url,
-                    type: 'main_frame'
-                  });
-                } catch (e) {
-                  console.error("Error calling webRequest.onCompleted callback:", e);
-                }
-              }
-            });
-          }
-        }
-      };
-    }
-  }
-}
-
-// Now load the scripts
-try {
-  // Add some extra error prevention
-  const originalConsole = console;
-
-  // Load the scripts one by one to ensure each one gets a separate try/catch
-  try {
-    self.importScripts('ext/sjcl.js');
-    originalConsole.log('Successfully loaded sjcl.js');
-  } catch (sjclError) {
-    originalConsole.error('Error loading sjcl.js:', sjclError);
-  }
-
-  try {
-    self.importScripts('global.min.js');
-    originalConsole.log('Successfully loaded global.min.js');
-  } catch (globalError) {
-    originalConsole.error('Error loading global.min.js:', globalError);
-
-    // If there's an error, add a shim for key functions to prevent extension crashes
-    if (typeof z === 'undefined') {
-      self.z = {
-        setToolbarButtonEnabled: function() {
-          originalConsole.log('Called setToolbarButtonEnabled (shim)');
-        },
-        da: function() {
-          originalConsole.log('Called da function (shim)');
-        },
-        pb: function() {
-          return null;
-        },
-        ab: function() {
-          originalConsole.log('Called ab function (shim)');
-        }
-      };
-    }
-  }
-} catch (error) {
-  console.error('General error during script loading:', error);
-}
-
-// Helper function to get current tab URL (the F function in global.min.js)
-function getCurrentTabUrl(callback) {
-  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    if (tabs && tabs.length > 0 && tabs[0].url) {
-      callback(tabs[0].url);
-    } else {
-      callback('');
-    }
+// Pairing material must not be readable from content-script contexts.
+if (chrome.storage.local.setAccessLevel) {
+  chrome.storage.local.setAccessLevel({accessLevel: 'TRUSTED_CONTEXTS'}).catch((error) => {
+    console.error('[1Password] Failed to restrict local storage access:', error);
   });
 }
 
-// Make this helper available for the global.min.js script
-self.F = getCurrentTabUrl;
+// MV2 browserAction compatibility. New code should use chrome.action directly.
+if (!chrome.browserAction) {
+  chrome.browserAction = {
+    onClicked: chrome.action.onClicked,
+    enable: (tabId) => tabId === undefined ? chrome.action.enable() : chrome.action.enable(tabId),
+    disable: (tabId) => tabId === undefined ? chrome.action.disable() : chrome.action.disable(tabId),
+    setIcon: (details) => chrome.action.setIcon(details),
+    setTitle: (details) => chrome.action.setTitle(details),
+    setBadgeText: (details) => chrome.action.setBadgeText(details),
+    setBadgeBackgroundColor: (details) => chrome.action.setBadgeBackgroundColor(details)
+  };
+}
 
-// Set up message listeners for communication between content scripts and service worker
-self.addEventListener('message', (event) => {
-  // Handle messages from content scripts
+// Service workers do not support an onclick property in contextMenus.create().
+// Use one stable ID and a top-level event listener so it survives worker restarts.
+const contextMenuHandlers = new Map();
+const originalContextMenuCreate = chrome.contextMenus.create.bind(chrome.contextMenus);
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  const handler = contextMenuHandlers.get(String(info.menuItemId));
+  if (handler) handler(info, tab);
 });
 
-// In Manifest V3, webRequest blocking API is replaced with declarativeNetRequest
-// If the extension was using webRequestBlocking for request modification,
-// the logic would need to be reimplemented using declarativeNetRequest rules here
+chrome.contextMenus.create = (properties, callback) => {
+  const normalized = {...properties};
+  normalized.id = String(normalized.id || 'onepassword-classic-context-menu');
+  if (typeof normalized.onclick === 'function') {
+    contextMenuHandlers.set(normalized.id, normalized.onclick);
+    delete normalized.onclick;
+  }
 
-// Initialize chrome API listeners that were previously in the background script
-// Make sure the extension properly initializes when the service worker starts
-chrome.runtime.onStartup.addListener(() => {
-  console.log("Extension started up");
-});
+  return originalContextMenuCreate(normalized, () => {
+    const error = chrome.runtime.lastError;
+    if (error && !error.message.includes('duplicate id')) {
+      console.error('[1Password] Failed to create context menu:', error.message);
+    }
+    if (callback) callback();
+  });
+};
 
-// Also initialize on install
-chrome.runtime.onInstalled.addListener((details) => {
-  console.log("Extension installed or updated", details);
+// MV3 cannot perform a blocking webRequest redirect. The legacy Go & Fill URL
+// is handled from tabs.onUpdated instead: parse/track it with the original
+// callback, then navigate to the sanitized URL returned by that callback.
+const beforeRequestListeners = [];
+const completedRequestListeners = [];
 
-  // Clean up context menus and recreate them to ensure they work properly in MV3
-  if (chrome.contextMenus) {
-    chrome.contextMenus.removeAll();
+chrome.webRequest = {
+  onBeforeRequest: {
+    addListener(callback, filter) {
+      beforeRequestListeners.push({callback, filter});
+    }
+  },
+  onCompleted: {
+    addListener(callback, filter) {
+      completedRequestListeners.push({callback, filter});
+    }
+  }
+};
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && changeInfo.url.includes('onepasswdfill=')) {
+    for (const {callback} of beforeRequestListeners) {
+      try {
+        const result = callback({tabId, url: changeInfo.url, type: 'main_frame'});
+        if (result && result.redirectUrl && result.redirectUrl !== changeInfo.url) {
+          chrome.tabs.update(tabId, {url: result.redirectUrl});
+          break;
+        }
+      } catch (error) {
+        console.error('[1Password] Go & Fill navigation failed:', error);
+      }
+    }
+  }
+
+  if (changeInfo.status === 'complete') {
+    for (const {callback} of completedRequestListeners) {
+      try {
+        callback({tabId, url: tab.url, type: 'main_frame'});
+      } catch (error) {
+        console.error('[1Password] Navigation completion handler failed:', error);
+      }
+    }
   }
 });
+
+// The legacy bundle supplies empty callbacks to tabs.sendMessage(). Chrome logs
+// an "Unchecked runtime.lastError" warning unless the callback reads lastError
+// when a tab has no content script (for example chrome:// or a pre-reload tab).
+const originalTabsSendMessage = chrome.tabs.sendMessage.bind(chrome.tabs);
+chrome.tabs.sendMessage = (...args) => {
+  const callbackIndex = args.length - 1;
+  if (typeof args[callbackIndex] === 'function') {
+    const callback = args[callbackIndex];
+    args[callbackIndex] = (...callbackArgs) => {
+      void chrome.runtime.lastError;
+      return callback(...callbackArgs);
+    };
+  }
+  return originalTabsSendMessage(...args);
+};
+
+self.F = (callback) => {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    callback(tabs && tabs[0] && tabs[0].url ? tabs[0].url : '');
+  });
+};
+
+// Fail closed. A toolbar that appears usable while the core failed to load is
+// more dangerous than an explicit worker initialization error.
+importScripts('ext/sjcl.js');
+importScripts('global.min.js');
+
+console.info('[1Password] Classic MV3 service worker initialized.');

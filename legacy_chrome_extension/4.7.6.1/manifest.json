@@ -19,6 +19,7 @@
   "background": {
     "service_worker": "background.js"
   },
+  "minimum_chrome_version": "116",
   "content_scripts": [
     {
       "all_frames": true,
@@ -59,30 +60,11 @@
     "contextMenus",
     "nativeMessaging",
     "storage",
-    "tabs",
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
-    "scripting"
+    "tabs"
   ],
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "ruleset_1",
-        "enabled": true,
-        "path": "rules.json"
-      }
-    ]
-  },
   "host_permissions": [
     "http://*/*",
     "https://*/*"
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["injected.min.js", "fillStyle.css"],
-      "matches": ["http://*/*", "https://*/*"]
-    }
-  ],
-  "short_name": "1Password",
-  "update_url": "https://cdn.agilebits.com/dist/1P/ext/autoupdate_chrome_beta4.xml"
+  "short_name": "1Password"
 }

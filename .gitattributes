@@ -1,0 +1,3 @@
+# These audited manifest templates have pinned byte-level hashes (UTF-8 BOM/CRLF).
+artifacts/windows-native-messaging/ChromeManifest.original.json -text
+artifacts/windows-native-messaging/ChromeManifest.candidate.json -text

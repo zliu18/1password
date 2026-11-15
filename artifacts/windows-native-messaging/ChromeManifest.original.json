@@ -1,0 +1,13 @@
+﻿{
+	"name": "2bua8c4s2c.com.agilebits.1password",
+	"description": "1Password",
+	"path": "\\1Password.NativeMessagingHost.exe",
+	"type": "stdio",
+	"allowed_origins": [
+		"chrome-extension://jcjaoeifeheahnjbolddgagkiahngegm/",
+		"chrome-extension://aomjjhallfgjeglblehebfpbcfeobpgk/",
+		"chrome-extension://phicbbndgmmpogmijjkbmdhpioaieaha/",
+		"chrome-extension://fpnbobholfpcolmkinlokiaaanjilcop/",
+		"chrome-extension://ffgeebhnlfcekjbfekfppddlklaopmok/"
+	]
+}

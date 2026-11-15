@@ -1,0 +1,6 @@
+artifacts/analysis-deps/
+artifacts/windows-native-messaging/*.exe
+artifacts/windows-native-messaging/*.json
+!artifacts/windows-native-messaging/ChromeManifest.original.json
+!artifacts/windows-native-messaging/ChromeManifest.candidate.json
+artifacts/**/__pycache__/
